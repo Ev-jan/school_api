@@ -39,6 +39,15 @@ func execsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type Middleware func(http.Handler) http.Handler
+
+func applyMiddleware(handler http.Handler, middlewares ...Middleware)http.Handler {
+	for _, middleware := range middlewares {
+		handler = middleware(handler)
+	}
+	return handler
+}
+
 func main() {
 	port := ":3000"
 
@@ -66,7 +75,8 @@ func main() {
 		WhiteList: []string{"sort-by","sort-order", "name", "age", "class"},
 	}
 	// Prepare middlewares
-	secureMux := mw.Cors(rl.Middleware(mw.ResponseTime(mw.SecurityHeaders(mw.Compression(mw.Hpp(hppOptions)(mux))))))
+	// secureMux := mw.Cors(rl.Middleware(mw.ResponseTime(mw.SecurityHeaders(mw.Compression(mw.Hpp(hppOptions)(mux))))))
+	secureMux := applyMiddleware(mux, mw.Hpp(hppOptions), mw.Compression, mw.SecurityHeaders, mw.ResponseTime, rl.Middleware, mw.Cors)
 	// create custom server
 	server := &http.Server{
 		Addr:      port,
