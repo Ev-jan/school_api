@@ -2,16 +2,33 @@ package main
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	mw "schoolapi/internal/api/middlewares"
 	"schoolapi/internal/api/router"
+	"schoolapi/internal/repository/sqlconnect"
 	"schoolapi/pkg/utils"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	port := ":3000"
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading env vars", err)
+	}
+	_, err = sqlconnect.ConnectDB()
+
+	if err != nil {
+		log.Fatal("Error connecting to the DB:", err)
+		return
+	}
+
+	port := os.Getenv("API_PORT")
 	cert := "cert.pem"
 	key := "key.pem"
 
@@ -25,7 +42,7 @@ func main() {
 		CheckQuery:                  true,
 		CheckBody:                   true,
 		CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
-		WhiteList:                   []string{"sort-by", "sort-order", "name", "age", "class", "first_name", "last_name"},
+		WhiteList:                   []string{"sort-by", "sort-order", "name", "age", "class", "first-name", "last-name"},
 	}
 	// Prepare middlewares
 	// secureMux := mw.Cors(rl.Middleware(mw.ResponseTime(mw.SecurityHeaders(mw.Compression(mw.Hpp(hppOptions)(mux))))))
@@ -38,5 +55,6 @@ func main() {
 		TLSConfig: tlsConfig,
 	}
 
+	fmt.Println("Server running on port ", port)
 	log.Fatal(server.ListenAndServeTLS(cert, key))
 }
