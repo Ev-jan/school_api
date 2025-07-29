@@ -23,22 +23,10 @@ func getTeachers(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimSuffix(path, "/")
 
 	if idStr == "" {
-		firstName := r.URL.Query().Get("first-name")
-		lastName := r.URL.Query().Get("last-name")
-
 		query := "SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE 1=1"
 		var args []any
 
-		if firstName != "" {
-			query += " AND first_name = ?"
-			args = append(args, firstName)
-		}
-
-		if lastName != "" {
-			query += " AND last_name = ?"
-			args = append(args, lastName)
-		}
-
+		query, args = addFilters(r, query, args)
 		rows, err := db.Query(query, args...)
 		if err != nil {
 			fmt.Println(err)
@@ -91,6 +79,25 @@ func getTeachers(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(teacher)
+}
+
+func addFilters(r *http.Request, query string, args []any) (string, []any) {
+	params := map[string]string{
+		"first-name": "first_name",
+		"last-name":  "last_name",
+		"email":      "email",
+		"class":      "class",
+		"subject":    "subject",
+	}
+
+	for param, dbField := range params {
+		value := r.URL.Query().Get(param)
+		if value != "" {
+			query += " AND " + dbField + " = ?"
+			args = append(args, value)
+		}
+	}
+	return query, args
 }
 
 func addTeachers(w http.ResponseWriter, r *http.Request) {
