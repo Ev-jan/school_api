@@ -3,9 +3,9 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
-	models "schoolapi/internal/models"
+	"schoolapi/internal/models"
 	"schoolapi/internal/repository/sqlconnect"
 	"strconv"
 	"strings"
@@ -14,23 +14,24 @@ import (
 func getTeachers(w http.ResponseWriter, r *http.Request) {
 	db, err := sqlconnect.ConnectDB()
 	if err != nil {
-		http.Error(w, "Error connecting to DB: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error connecting to DB: ", http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
 
-	path := strings.TrimPrefix(r.URL.Path, "/teachers/")
-	idStr := strings.TrimSuffix(path, "/")
+	idStr := strings.Trim(strings.TrimPrefix(r.URL.Path, "/teachers/"), "/")
 
 	if idStr == "" {
 		query := "SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE 1=1"
 		var args []any
 
 		query, args = addFilters(r, query, args)
+		query = addSorting(r, query)
+
 		rows, err := db.Query(query, args...)
 		if err != nil {
-			fmt.Println(err)
-			http.Error(w, "Database query error"+err.Error(), http.StatusInternalServerError)
+			log.Printf("Query error: %v", err)
+			http.Error(w, "Database query failed", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
@@ -40,7 +41,8 @@ func getTeachers(w http.ResponseWriter, r *http.Request) {
 			var teacher models.Teacher
 			err := rows.Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
 			if err != nil {
-				http.Error(w, "Database error"+err.Error(), http.StatusInternalServerError)
+				log.Printf("Row scan error: %v", err)
+				http.Error(w, "Database error", http.StatusInternalServerError)
 				return
 			}
 			teacherList = append(teacherList, teacher)
@@ -50,13 +52,12 @@ func getTeachers(w http.ResponseWriter, r *http.Request) {
 			Status string           `json:"status"`
 			Count  int              `json:"count"`
 			Data   []models.Teacher `json:"data"`
-		}{
-			Status: "success",
-			Count:  len(teacherList),
-			Data:   teacherList,
-		}
+		}{"success", len(teacherList), teacherList}
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			log.Printf("JSON encoding error: %v", err)
+		}
 		return
 	}
 
@@ -68,23 +69,48 @@ func getTeachers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var teacher models.Teacher
-	err = db.QueryRow("SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE id = ?", id).Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
+	err = db.QueryRowContext(r.Context(), "SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE id = ?", id).Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
 	if err == sql.ErrNoRows {
 		http.Error(w, "Teacher not found", http.StatusNotFound)
 		return
 	} else if err != nil {
-		http.Error(w, "Database query error"+err.Error(), http.StatusInternalServerError)
+		log.Printf("QueryRow error: %v", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(teacher)
+	if err := json.NewEncoder(w).Encode(teacher); err != nil {
+		log.Printf("JSON encoding error: %v", err)
+	}
+}
+
+func addSorting(r *http.Request, query string) string {
+	sortParams := r.URL.Query()["sort_by"] // NB! this approach for getting a slice of strings instead of one big string
+	if len(sortParams) > 0 {
+		var orderClauses []string
+		for _, param := range sortParams {
+			parts := strings.Split(param, ":")
+			if len(parts) != 2 {
+				continue
+			}
+			field, order := parts[0], parts[1]
+			if !isValidSortField(field) || !isValidSortOrder(order) {
+				continue
+			}
+			orderClauses = append(orderClauses, field+" "+order)
+		}
+		if len(orderClauses) > 0 {
+			query += " ORDER BY " + strings.Join(orderClauses, ", ")
+		}
+	}
+	return query
 }
 
 func addFilters(r *http.Request, query string, args []any) (string, []any) {
 	params := map[string]string{
-		"first-name": "first_name",
-		"last-name":  "last_name",
+		"first_name": "first_name",
+		"last_name":  "last_name",
 		"email":      "email",
 		"class":      "class",
 		"subject":    "subject",
@@ -98,6 +124,21 @@ func addFilters(r *http.Request, query string, args []any) (string, []any) {
 		}
 	}
 	return query, args
+}
+
+func isValidSortOrder(order string) bool {
+	return order == "asc" || order == "desc"
+}
+
+func isValidSortField(field string) bool {
+	validFields := map[string]bool{
+		"first_name": true,
+		"last_name":  true,
+		"email":      true,
+		"class":      true,
+		"subject":    true,
+	}
+	return validFields[field]
 }
 
 func addTeachers(w http.ResponseWriter, r *http.Request) {
