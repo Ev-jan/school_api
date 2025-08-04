@@ -11,7 +11,6 @@ func StudentsHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		fmt.Println("Method get")
 	case http.MethodPost:
-		addTeachers(w, r)
 		fmt.Println("Method post")
 	}
 }
