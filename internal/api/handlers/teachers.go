@@ -13,7 +13,7 @@ func GetTeachers(w http.ResponseWriter, r *http.Request) {
 	var teachers []models.Teacher
 	teachers, err := sqlconnect.GetTeachersDB(teachers, r)
 	if err != nil {
-
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -40,6 +40,7 @@ func GetTeacher(w http.ResponseWriter, r *http.Request) {
 
 	teacher, err := sqlconnect.GetTeacherDB(id)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -59,6 +60,7 @@ func AddTeachers(w http.ResponseWriter, r *http.Request) {
 
 	addedTeachers, err := sqlconnect.AddTeachersDB(newTeachers)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -94,6 +96,7 @@ func UpdateTeacher(w http.ResponseWriter, r *http.Request) {
 
 	updatedTeacher, err = sqlconnect.UpdateTeacherDB(id, updatedTeacher)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -122,6 +125,7 @@ func PatchTeacher(w http.ResponseWriter, r *http.Request) {
 
 	existingTeacher, err := sqlconnect.PatchTeacherDB(id, updates)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -143,6 +147,7 @@ func PatchTeachers(w http.ResponseWriter, r *http.Request) {
 
 	err := sqlconnect.PatchTeachersDB(updates)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -160,6 +165,7 @@ func DeleteTeacher(w http.ResponseWriter, r *http.Request) {
 
 	err = sqlconnect.DeleteTeacherDB(id)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -188,6 +194,7 @@ func DeleteTeachers(w http.ResponseWriter, r *http.Request) {
 
 	deletedIds, err := sqlconnect.DeleteTeachersDB(ids)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
