@@ -67,7 +67,8 @@ func AddTeachersDB(newTeachers []models.Teacher) ([]models.Teacher, error) {
 	}
 	defer db.Close()
 
-	stmt, err := db.Prepare("INSERT INTO teachers (first_name, last_name, email, `class`, `subject`) VALUES (?,?,?,?,?)")
+	// stmt, err := db.Prepare("INSERT INTO teachers (first_name, last_name, email, `class`, `subject`) VALUES (?,?,?,?,?)") // the olden way of manual labor
+	stmt, err := db.Prepare(generateInsertQuery(models.Teacher{}, "teachers")) // using new function
 	if err != nil {
 		return nil, utils.ErrorHandler(err, "Error preparing SQL statement")
 	}
@@ -75,7 +76,9 @@ func AddTeachersDB(newTeachers []models.Teacher) ([]models.Teacher, error) {
 
 	addedTeachers := make([]models.Teacher, len(newTeachers))
 	for i, t := range newTeachers {
-		res, err := stmt.Exec(t.FirstName, t.LastName, t.Email, t.Class, t.Subject)
+		// res, err := stmt.Exec(t.FirstName, t.LastName, t.Email, t.Class, t.Subject)
+		values := getStructValues(t)
+		res, err := stmt.Exec(values...)
 		if err != nil {
 			return nil, utils.ErrorHandler(err, "Error inserting data into DB")
 		}

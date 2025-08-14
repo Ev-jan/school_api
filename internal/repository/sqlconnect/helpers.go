@@ -1,7 +1,9 @@
 package sqlconnect
 
 import (
+	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 )
 
@@ -59,4 +61,38 @@ func addFilters(r *http.Request, query string, args []any) (string, []any) {
 		}
 	}
 	return query, args
+}
+
+func generateInsertQuery(model any, intoTableName string) string {
+	modelType := reflect.TypeOf(model)
+	var columns, placeholders string // placeholder is a questionmark in a the query string
+	for i := 0; i < modelType.NumField(); i++ {
+		dbTag := modelType.Field(i).Tag.Get("db")
+		fmt.Println("DB tag: ", dbTag)
+		dbTag = strings.TrimSuffix(dbTag, ",omitempty")
+		if dbTag != "" && dbTag != "id" {
+			if columns != "" {
+				columns += ", "
+				placeholders += ", "
+			}
+			columns += dbTag
+			placeholders += "?"
+		}
+	}
+	fmt.Printf("INSERT INTO %s (%s) VALUES (%s)\n", intoTableName, columns, placeholders)
+	return fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", intoTableName, columns, placeholders)
+}
+
+func getStructValues(model any) []any {
+	modelValue := reflect.ValueOf(model)
+	modelType := modelValue.Type()
+	values := []any{}
+	for i := 0; i < modelType.NumField(); i++ {
+		dbTag := modelType.Field(i).Tag.Get("db")
+		if dbTag != "" && dbTag != "id,omitempty" {
+			values = append(values, modelValue.Field(i).Interface())
+		}
+	}
+	fmt.Println("Values:", values)
+	return values
 }

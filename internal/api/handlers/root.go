@@ -5,5 +5,5 @@ import (
 )
 
 func RootHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("root route"))
+	w.Write([]byte("Welcome to school API"))
 }
