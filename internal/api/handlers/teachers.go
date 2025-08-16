@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"schoolapi/internal/models"
 	"schoolapi/internal/repository/sqlconnect"
 	"strconv"
+	"time"
 )
 
 func GetTeachers(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +87,9 @@ func UpdateTeacher(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid teacher id", http.StatusBadRequest)
 		return
 	}
+	ctx := r.Context()
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
 
 	var updatedTeacher models.Teacher
 
@@ -94,7 +99,7 @@ func UpdateTeacher(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedTeacher, err = sqlconnect.UpdateTeacherDB(id, updatedTeacher)
+	updatedTeacher, err = sqlconnect.UpdateTeacherDB(ctx, id, updatedTeacher)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -191,7 +196,6 @@ func DeleteTeachers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid teacher ids", http.StatusInternalServerError)
 		return
 	}
-
 	deletedIds, err := sqlconnect.DeleteTeachersDB(ids)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -204,4 +208,49 @@ func DeleteTeachers(w http.ResponseWriter, r *http.Request) {
 		DeletedIds []int  `json:"deleted_ids"`
 	}{"Teachers successfully deleted", deletedIds}
 	json.NewEncoder(w).Encode(response)
+}
+
+func GetStudentsByTeacherId(w http.ResponseWriter, r *http.Request) {
+	teacherId := r.PathValue("id")
+
+	var students []models.Student
+
+	students, err := sqlconnect.GetStudentsByTeacherIdDB(teacherId, students)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := struct {
+		Status string           `json:"status"`
+		Count  int              `json:"count"`
+		Data   []models.Student `json:"data"`
+	}{
+		"success", len(students), students,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Error encoding student count", http.StatusInternalServerError)
+		return
+	}
+}
+
+func GetStudentsCountByTeacherId(w http.ResponseWriter, r *http.Request) {
+	teacherId := r.PathValue("id")
+	count, err := sqlconnect.GetStudentsCountByTeacherIdDB(teacherId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	response := struct {
+		Status       string `json:"status"`
+		TeacherID    string `json:"teacher_id"`
+		StudentCount uint   `json:"student_count"`
+	}{"success", teacherId, count}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Error encoding student count", http.StatusInternalServerError)
+		return
+	}
 }
