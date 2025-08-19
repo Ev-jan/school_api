@@ -10,8 +10,8 @@ import (
 )
 
 func GetStudents(w http.ResponseWriter, r *http.Request) {
-	var teachers []models.Student
-	teachers, err := sqlconnect.GetStudentsDB(teachers, r)
+	var students []models.Student
+	students, err := sqlconnect.GetStudentsDB(students, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -21,7 +21,7 @@ func GetStudents(w http.ResponseWriter, r *http.Request) {
 		Status string           `json:"status"`
 		Count  int              `json:"count"`
 		Data   []models.Student `json:"data"`
-	}{"success", len(teachers), teachers}
+	}{"success", len(students), students}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -34,18 +34,18 @@ func GetStudent(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Error converting teacher ID", http.StatusInternalServerError)
+		http.Error(w, "Error converting student ID", http.StatusInternalServerError)
 		return
 	}
 
-	teacher, err := sqlconnect.GetStudentDB(id)
+	student, err := sqlconnect.GetStudentDB(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(teacher); err != nil {
+	if err := json.NewEncoder(w).Encode(student); err != nil {
 		log.Printf("JSON encoding error: %v", err)
 	}
 }
@@ -81,8 +81,8 @@ func UpdateStudent(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		log.Printf("Error converting teacher's id string to int: %v", err)
-		http.Error(w, "Invalid teacher id", http.StatusBadRequest)
+		log.Printf("Error converting student's id string to int: %v", err)
+		http.Error(w, "Invalid student id", http.StatusBadRequest)
 		return
 	}
 
@@ -111,8 +111,8 @@ func PatchStudent(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		log.Printf("Error converting teacher's id string to int: %v", err)
-		http.Error(w, "Invalid teacher id", http.StatusBadRequest)
+		log.Printf("Error converting student's id string to int: %v", err)
+		http.Error(w, "Invalid student id", http.StatusBadRequest)
 		return
 	}
 
@@ -158,8 +158,8 @@ func DeleteStudent(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		log.Printf("Error converting teacher's id string to int: %v", err)
-		http.Error(w, "Invalid teacher id", http.StatusBadRequest)
+		log.Printf("Error converting student's id string to int: %v", err)
+		http.Error(w, "Invalid student id", http.StatusBadRequest)
 		return
 	}
 
@@ -188,7 +188,7 @@ func DeleteStudents(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&ids)
 	if err != nil {
 		log.Printf("Error reading ids from request body: %v", err)
-		http.Error(w, "Invalid teacher ids", http.StatusInternalServerError)
+		http.Error(w, "Invalid student ids", http.StatusInternalServerError)
 		return
 	}
 
