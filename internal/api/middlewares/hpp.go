@@ -22,32 +22,31 @@ import (
 )
 
 type HPPOptions struct {
-	CheckQuery 					bool
-	CheckBody 					bool
+	CheckQuery                  bool
+	CheckBody                   bool
 	CheckBodyOnlyForContentType string
-	WhiteList 					[]string
+	WhiteList                   []string
 }
 
 // This is a higher‑order function returning a closure — a very common Go idiom for building middleware.
-func Hpp(options HPPOptions) func (http.Handler) http.Handler {
+func Hpp(options HPPOptions) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if options.CheckBody && r.Method == http.MethodPost && isCorrectContentType(r, options.CheckBodyOnlyForContentType){
+			if options.CheckBody && r.Method == http.MethodPost && isCorrectContentType(r, options.CheckBodyOnlyForContentType) {
 				filterBodyParams(r, options.WhiteList)
 			}
 			if options.CheckQuery && r.URL.Query() != nil {
 				filterQueryParams(r, options.WhiteList)
 			}
+			fmt.Println("Sent response from Hpp middleware")
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-
 func isCorrectContentType(r *http.Request, contentType string) bool {
- return strings.Contains(r.Header.Get("Content-Type"), contentType)
+	return strings.Contains(r.Header.Get("Content-Type"), contentType)
 }
-
 
 func filterBodyParams(r *http.Request, whiteList []string) {
 	err := r.ParseForm()
@@ -68,7 +67,6 @@ func filterBodyParams(r *http.Request, whiteList []string) {
 
 func filterQueryParams(r *http.Request, whiteList []string) {
 	query := r.URL.Query()
-
 
 	for k, v := range query {
 		if len(v) > 1 {

@@ -38,17 +38,16 @@ func main() {
 
 	rl := mw.NewRateLimiter(5, time.Minute)
 
-	// hppOptions := mw.HPPOptions{
-	// 	CheckQuery:                  true,
-	// 	CheckBody:                   true,
-	// 	CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
-	// 	WhiteList:                   []string{"sort_by", "sort_order", "class", "first_name", "last_name", "email", "subject"},
-	// }
-	// Prepare middlewares
-	// secureMux := mw.Cors(rl.Middleware(mw.ResponseTime(mw.SecurityHeaders(mw.Compression(mw.Hpp(hppOptions)(mux))))))
-	// secureMux := applyMiddleware(mux, mw.Hpp(hppOptions), mw.Compression, mw.SecurityHeaders, mw.ResponseTime, rl.Middleware, mw.Cors)
-	secureMux := utils.ApplyMiddleware(router.MainRouter(), rl.Middleware)
-	// create custom server
+	HPPOptions := mw.HPPOptions{
+		CheckQuery:                  true,
+		CheckBody:                   true,
+		CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
+		WhiteList:                   []string{"sort_by", "name", "age", "class"},
+	}
+
+	jwtMiddleware := mw.ExcludePaths(mw.JWT, "/execs/login", "/execs/forgot-password", "/execs/reset-password/reset")
+	secureMux := utils.ApplyMiddleware(router.MainRouter(), mw.SecurityHeaders, mw.Compression, mw.Hpp(HPPOptions), mw.XSS, jwtMiddleware, mw.ResponseTime, rl.Middleware, mw.Cors)
+
 	server := &http.Server{
 		Addr:      port,
 		Handler:   secureMux,

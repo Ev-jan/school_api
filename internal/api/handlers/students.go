@@ -10,18 +10,22 @@ import (
 )
 
 func GetStudents(w http.ResponseWriter, r *http.Request) {
+	limit, page := getPaginationParams(r)
+
 	var students []models.Student
-	students, err := sqlconnect.GetStudentsDB(students, r)
+	students, totalCount, err := sqlconnect.GetStudentsDB(students, r, limit, page)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	response := struct {
-		Status string           `json:"status"`
-		Count  int              `json:"count"`
-		Data   []models.Student `json:"data"`
-	}{"success", len(students), students}
+		Status     string           `json:"status"`
+		TotalCount int              `json:"total_count"`
+		Page       int              `json:"page"`
+		Limit      int              `json:"limit"`
+		Data       []models.Student `json:"data"`
+	}{"success", totalCount, page, limit, students}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"schoolapi/internal/models"
@@ -164,7 +165,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "username and password are required", http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
+	r.Body.Close()
 
 	// validate parsed credentials
 
@@ -221,4 +222,106 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"message": "logged out successfully"}`))
+}
+
+func UpdatePassword(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	var req models.UpdatePasswordRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	if req.CurrentPassword == "" || req.NewPassword == "" {
+		http.Error(w, "Please enter password", http.StatusBadRequest)
+		return
+	}
+
+	username, userRole, err := sqlconnect.UpdatePasswordDB(idStr, req.CurrentPassword, req.NewPassword)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	token, err := utils.SignToken(idStr, username, userRole)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "Bearer",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		Expires:  time.Now().Add(time.Hour * 24),
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	response := struct {
+		Message string `json:"message"`
+	}{"Password has been succesfully updated"}
+
+	json.NewEncoder(w).Encode(response)
+}
+
+func ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	r.Body.Close()
+
+	if req.Email == "" {
+		http.Error(w, "please enter email address", http.StatusBadRequest)
+		return
+	}
+
+	if err := sqlconnect.ForgotPasswordDB(req.Email); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// respond with success message
+	fmt.Fprintf(w, "Password reset link sent to %s", req.Email)
+}
+
+func ResetPassword(w http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("resetcode")
+
+	type request struct {
+		NewPassword     string `json:"new_password"`
+		ConfirmPassword string `json:"confirm_password"`
+	}
+
+	var req request
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	r.Body.Close()
+
+	if req.NewPassword == "" || req.ConfirmPassword == "" {
+		http.Error(w, "please enter new password and confirm password", http.StatusBadRequest)
+		return
+	}
+
+	if req.NewPassword != req.ConfirmPassword {
+		http.Error(w, "password shoud match", http.StatusBadRequest)
+		return
+	}
+
+	if err := sqlconnect.ResetPasswordDB(token, req.NewPassword); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Fprintln(w, "Password successfully reset")
 }

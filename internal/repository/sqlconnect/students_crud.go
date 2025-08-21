@@ -27,24 +27,26 @@ func GetStudentDB(id int) (models.Student, error) {
 	return student, nil
 }
 
-func GetStudentsDB(students []models.Student, r *http.Request) ([]models.Student, error) {
-
+func GetStudentsDB(students []models.Student, r *http.Request, limit, page int) ([]models.Student, int, error) {
 	query := "SELECT id, first_name, last_name, email, class FROM students WHERE 1=1"
 	var args []any
 
 	query, args = addFilters(r, query, args)
 	query = addSorting(r, query)
 
+	offset := (page - 1) * limit
+	query += " LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+
 	db, err := ConnectDB()
 	if err != nil {
-		return nil, utils.ErrorHandler(err, "Error connecting to DB")
+		return nil, 0, utils.ErrorHandler(err, "Error connecting to DB")
 	}
 	defer db.Close()
 
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		log.Printf("Query error: %v", err)
-		return nil, err
+		return nil, 0, utils.ErrorHandler(err, "internal error")
 	}
 	defer rows.Close()
 
@@ -52,12 +54,17 @@ func GetStudentsDB(students []models.Student, r *http.Request) ([]models.Student
 		var student models.Student
 		err := rows.Scan(&student.ID, &student.FirstName, &student.LastName, &student.Email, &student.Class)
 		if err != nil {
-			log.Printf("Row scan error: %v", err)
-			return nil, err
+			return nil, 0, utils.ErrorHandler(err, "internal error")
 		}
 		students = append(students, student)
 	}
-	return students, nil
+	var totalCount int
+	countQuery := "SELECT COUNT(DISTINCT id) FROM students"
+	if err = db.QueryRow(countQuery).Scan(&totalCount); err != nil {
+		return nil, 0, utils.ErrorHandler(err, "internal error")
+	}
+
+	return students, totalCount, nil
 }
 
 func AddStudentsDB(newStudents []models.Student) ([]models.Student, error) {

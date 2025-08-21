@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"fmt"
 	"net/http"
 	"slices"
 )
@@ -33,6 +34,8 @@ func Cors(next http.Handler) http.Handler {
 		if r.Method == http.MethodOptions {
 			return
 		}
+
+		fmt.Println("Sent response from Cors middleware")
 
 		next.ServeHTTP(w, r)
 	})

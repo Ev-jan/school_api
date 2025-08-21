@@ -65,7 +65,7 @@ func addFilters(r *http.Request, query string, args []any) (string, []any) {
 
 func generateInsertQuery(model any, intoTableName string) string {
 	modelType := reflect.TypeOf(model)
-	var columns, placeholders string // placeholder is a questionmark in a the query string
+	var columns, placeholders string // placeholder means a questionmark in a the query string
 	for i := 0; i < modelType.NumField(); i++ {
 		dbTag := modelType.Field(i).Tag.Get("db")
 		fmt.Println("DB tag: ", dbTag)

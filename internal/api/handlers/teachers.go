@@ -3,10 +3,12 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"schoolapi/internal/models"
 	"schoolapi/internal/repository/sqlconnect"
+	"schoolapi/pkg/utils"
 	"strconv"
 	"time"
 )
@@ -192,7 +194,6 @@ func DeleteTeachers(w http.ResponseWriter, r *http.Request) {
 	var ids []int
 	err := json.NewDecoder(r.Body).Decode(&ids)
 	if err != nil {
-		log.Printf("Error reading ids from request body: %v", err)
 		http.Error(w, "Invalid teacher ids", http.StatusInternalServerError)
 		return
 	}
@@ -236,6 +237,12 @@ func GetStudentsByTeacherId(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetStudentsCountByTeacherId(w http.ResponseWriter, r *http.Request) {
+	fmt.Println(r.Context())
+	_, err := utils.AuthorizeUser(r.Context().Value(utils.ContextKey("role")).(string), "admin", "manager", "exec")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
 	teacherId := r.PathValue("id")
 	count, err := sqlconnect.GetStudentsCountByTeacherIdDB(teacherId)
 	if err != nil {

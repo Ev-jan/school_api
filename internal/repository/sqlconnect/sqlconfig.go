@@ -11,7 +11,7 @@ import (
 func ConnectDB() (*sql.DB, error) {
 	user := os.Getenv("DB_USER")
 	password := os.Getenv("DB_PASSWORD")
-	host := os.Getenv("HOST")
+	host := os.Getenv("HOST_IP")
 	dbport := os.Getenv("DB_PORT")
 	dbname := os.Getenv("DB_NAME")
 
